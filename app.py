@@ -68,8 +68,8 @@ def get_records():
             }
             
             # Extract record values based on type
-            if record_set.arecords:
-                record_data['values'] = [r.ipv4_address for r in record_set.arecords]
+            if record_set.a_records:
+                record_data['values'] = [r.ipv4_address for r in record_set.a_records]
             elif record_set.aaaa_records:
                 record_data['values'] = [r.ipv6_address for r in record_set.aaaa_records]
             elif record_set.cname_record:
@@ -117,7 +117,7 @@ def create_record():
         record_set = RecordSet(ttl=ttl)
         
         if record_type == 'A':
-            record_set.arecords = [ARecord(ipv4_address=val) for val in values]
+            record_set.a_records = [ARecord(ipv4_address=val) for val in values]
         elif record_type == 'AAAA':
             record_set.aaaa_records = [AaaaRecord(ipv6_address=val) for val in values]
         elif record_type == 'CNAME':
@@ -166,7 +166,7 @@ def update_record(record_type, record_name):
         record_set = RecordSet(ttl=ttl)
         
         if record_type == 'A':
-            record_set.arecords = [ARecord(ipv4_address=val) for val in values]
+            record_set.a_records = [ARecord(ipv4_address=val) for val in values]
         elif record_type == 'AAAA':
             record_set.aaaa_records = [AaaaRecord(ipv6_address=val) for val in values]
         elif record_type == 'CNAME':
