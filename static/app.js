@@ -1,4 +1,5 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+// Use relative URL so it works regardless of hostname/IP
+const API_BASE_URL = '/api';
 
 // DOM Elements
 const zoneName = document.getElementById('zoneName');
@@ -83,6 +84,16 @@ function disableDarkMode() {
 document.addEventListener('DOMContentLoaded', async () => {
     initDarkMode();
     
+    // Always attach settings button listener first, so it works even in SETUP MODE
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => window.location.href = '/settings.html');
+    }
+    
+    // Always attach dark mode toggle
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('click', toggleDarkMode);
+    }
+    
     // Check if Azure credentials are configured
     const isConfigured = await checkConfigStatus();
     if (!isConfigured) {
@@ -92,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Only load records if configured
     loadRecords();
     
-    // Event listeners
+    // Event listeners for record management (only needed when configured)
     addRecordForm.addEventListener('submit', handleAddRecord);
     editRecordForm.addEventListener('submit', handleEditRecord);
     refreshBtn.addEventListener('click', loadRecords);
@@ -102,8 +113,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     selectAllBtn.addEventListener('click', selectAllFilters);
     deselectAllBtn.addEventListener('click', deselectAllFilters);
     searchInput.addEventListener('input', applyFilters);
-    darkModeToggle.addEventListener('click', toggleDarkMode);
-    settingsBtn.addEventListener('click', () => window.location.href = '/settings.html');
     
     // Close buttons for modals
     document.querySelectorAll('.close').forEach(closeBtn => {
