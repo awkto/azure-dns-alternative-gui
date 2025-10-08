@@ -71,6 +71,10 @@ def update_config(new_config):
 
 # Initialize Azure DNS client
 def get_dns_client():
+    """Get DNS client only if configuration is complete"""
+    if not is_config_complete():
+        raise ValueError("Azure configuration is incomplete. Please configure your credentials in Settings.")
+    
     credential = ClientSecretCredential(
         tenant_id=config['TENANT_ID'],
         client_id=config['CLIENT_ID'],
