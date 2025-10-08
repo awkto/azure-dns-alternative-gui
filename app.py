@@ -389,15 +389,16 @@ def delete_record(record_type, record_name):
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    # Verify environment variables are set
+    # Check if environment variables are set and log a warning if not
     required_vars = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 
                      'AZURE_SUBSCRIPTION_ID', 'AZURE_RESOURCE_GROUP', 'AZURE_DNS_ZONE']
     missing_vars = [var for var in required_vars if not os.getenv(var)]
     
     if missing_vars:
-        print(f"ERROR: Missing required environment variables: {', '.join(missing_vars)}")
-        print("Please copy .env.example to .env and fill in your Azure credentials.")
-        exit(1)
+        print(f"WARNING: Missing environment variables: {', '.join(missing_vars)}")
+        print("The application will start, but you need to configure Azure credentials in Settings.")
+        print(f"Starting Azure DNS Manager (unconfigured)")
+    else:
+        print(f"Starting Azure DNS Manager for zone: {DNS_ZONE}")
     
-    print(f"Starting Azure DNS Manager for zone: {DNS_ZONE}")
     app.run(debug=True, host='0.0.0.0', port=5000)
