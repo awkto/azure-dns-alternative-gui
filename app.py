@@ -3,8 +3,9 @@ from flask_cors import CORS
 from azure.identity import ClientSecretCredential
 from azure.mgmt.dns import DnsManagementClient
 from azure.mgmt.dns.models import RecordSet, ARecord, AaaaRecord, CnameRecord, MxRecord, TxtRecord
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 import os
+import json
 
 # Load environment variables
 load_dotenv()
@@ -12,22 +13,70 @@ load_dotenv()
 app = Flask(__name__, static_folder='static')
 CORS(app)
 
-# Azure credentials and configuration
-TENANT_ID = os.getenv('AZURE_TENANT_ID')
-CLIENT_ID = os.getenv('AZURE_CLIENT_ID')
-CLIENT_SECRET = os.getenv('AZURE_CLIENT_SECRET')
-SUBSCRIPTION_ID = os.getenv('AZURE_SUBSCRIPTION_ID')
-RESOURCE_GROUP = os.getenv('AZURE_RESOURCE_GROUP')
-DNS_ZONE = os.getenv('AZURE_DNS_ZONE')
+# Azure credentials and configuration (mutable for runtime updates)
+config = {
+    'TENANT_ID': os.getenv('AZURE_TENANT_ID'),
+    'CLIENT_ID': os.getenv('AZURE_CLIENT_ID'),
+    'CLIENT_SECRET': os.getenv('AZURE_CLIENT_SECRET'),
+    'SUBSCRIPTION_ID': os.getenv('AZURE_SUBSCRIPTION_ID'),
+    'RESOURCE_GROUP': os.getenv('AZURE_RESOURCE_GROUP'),
+    'DNS_ZONE': os.getenv('AZURE_DNS_ZONE')
+}
+
+# Legacy support - keep these for compatibility
+TENANT_ID = config['TENANT_ID']
+CLIENT_ID = config['CLIENT_ID']
+CLIENT_SECRET = config['CLIENT_SECRET']
+SUBSCRIPTION_ID = config['SUBSCRIPTION_ID']
+RESOURCE_GROUP = config['RESOURCE_GROUP']
+DNS_ZONE = config['DNS_ZONE']
+
+def is_config_complete():
+    """Check if all required configuration is present"""
+    return all([
+        config.get('TENANT_ID'),
+        config.get('CLIENT_ID'),
+        config.get('CLIENT_SECRET'),
+        config.get('SUBSCRIPTION_ID'),
+        config.get('RESOURCE_GROUP'),
+        config.get('DNS_ZONE')
+    ])
+
+def update_config(new_config):
+    """Update the configuration in memory and .env file"""
+    global config, TENANT_ID, CLIENT_ID, CLIENT_SECRET, SUBSCRIPTION_ID, RESOURCE_GROUP, DNS_ZONE
+    
+    config.update(new_config)
+    
+    # Update global variables
+    TENANT_ID = config['TENANT_ID']
+    CLIENT_ID = config['CLIENT_ID']
+    CLIENT_SECRET = config['CLIENT_SECRET']
+    SUBSCRIPTION_ID = config['SUBSCRIPTION_ID']
+    RESOURCE_GROUP = config['RESOURCE_GROUP']
+    DNS_ZONE = config['DNS_ZONE']
+    
+    # Save to .env file
+    env_file = '.env'
+    if not os.path.exists(env_file):
+        with open(env_file, 'w') as f:
+            f.write('')
+    
+    set_key(env_file, 'AZURE_TENANT_ID', config['TENANT_ID'])
+    set_key(env_file, 'AZURE_CLIENT_ID', config['CLIENT_ID'])
+    set_key(env_file, 'AZURE_CLIENT_SECRET', config['CLIENT_SECRET'])
+    set_key(env_file, 'AZURE_SUBSCRIPTION_ID', config['SUBSCRIPTION_ID'])
+    set_key(env_file, 'AZURE_RESOURCE_GROUP', config['RESOURCE_GROUP'])
+    set_key(env_file, 'AZURE_DNS_ZONE', config['DNS_ZONE'])
 
 # Initialize Azure DNS client
 def get_dns_client():
     credential = ClientSecretCredential(
-        tenant_id=TENANT_ID,
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET
+        tenant_id=config['TENANT_ID'],
+        client_id=config['CLIENT_ID'],
+        client_secret=config['CLIENT_SECRET']
     )
-    return DnsManagementClient(credential, SUBSCRIPTION_ID)
+    return DnsManagementClient(credential, config['SUBSCRIPTION_ID'])
 
 @app.route('/')
 def index():
@@ -42,20 +91,143 @@ def serve_static(path):
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
-    return jsonify({'status': 'healthy', 'zone': DNS_ZONE})
+    return jsonify({'status': 'healthy', 'zone': config.get('DNS_ZONE')})
+
+@app.route('/api/config/status', methods=['GET'])
+def config_status():
+    """Check if Azure configuration is complete"""
+    try:
+        complete = is_config_complete()
+        return jsonify({
+            'configured': complete,
+            'zone': config.get('DNS_ZONE') if complete else None,
+            'resource_group': config.get('RESOURCE_GROUP') if complete else None
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Get current configuration (with masked secret)"""
+    try:
+        client_secret = config.get('CLIENT_SECRET', '')
+        masked_secret = client_secret if client_secret else ''
+        
+        return jsonify({
+            'tenant_id': config.get('TENANT_ID', ''),
+            'client_id': config.get('CLIENT_ID', ''),
+            'client_secret': masked_secret,
+            'subscription_id': config.get('SUBSCRIPTION_ID', ''),
+            'resource_group': config.get('RESOURCE_GROUP', ''),
+            'dns_zone': config.get('DNS_ZONE', ''),
+            'has_secret': bool(client_secret)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/config', methods=['POST'])
+def save_config():
+    """Save Azure configuration"""
+    try:
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['tenant_id', 'client_id', 'client_secret', 'subscription_id', 'resource_group', 'dns_zone']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        if missing_fields:
+            return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
+        
+        # Update configuration
+        new_config = {
+            'TENANT_ID': data['tenant_id'],
+            'CLIENT_ID': data['client_id'],
+            'CLIENT_SECRET': data['client_secret'],
+            'SUBSCRIPTION_ID': data['subscription_id'],
+            'RESOURCE_GROUP': data['resource_group'],
+            'DNS_ZONE': data['dns_zone']
+        }
+        
+        update_config(new_config)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Configuration saved successfully',
+            'zone': config['DNS_ZONE']
+        })
+    except Exception as e:
+        print(f"Error saving configuration: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/config/test', methods=['POST'])
+def test_config():
+    """Test Azure credentials before saving"""
+    try:
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['tenant_id', 'client_id', 'client_secret', 'subscription_id', 'resource_group', 'dns_zone']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        if missing_fields:
+            return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
+        
+        # Try to create a client and list records
+        try:
+            credential = ClientSecretCredential(
+                tenant_id=data['tenant_id'],
+                client_id=data['client_id'],
+                client_secret=data['client_secret']
+            )
+            test_client = DnsManagementClient(credential, data['subscription_id'])
+            
+            # Try to list records to verify access
+            record_sets = list(test_client.record_sets.list_by_dns_zone(
+                data['resource_group'],
+                data['dns_zone']
+            ))
+            
+            record_count = len(record_sets)
+            
+            return jsonify({
+                'success': True,
+                'message': f'Connection successful! Found {record_count} DNS records.',
+                'record_count': record_count,
+                'zone': data['dns_zone']
+            })
+        except Exception as azure_error:
+            error_msg = str(azure_error)
+            if 'AADSTS' in error_msg:
+                return jsonify({'error': 'Authentication failed. Please check your Tenant ID, Client ID, and Client Secret.'}), 401
+            elif 'ResourceGroupNotFound' in error_msg:
+                return jsonify({'error': f'Resource group "{data["resource_group"]}" not found.'}), 404
+            elif 'ResourceNotFound' in error_msg or 'ZoneNotFound' in error_msg:
+                return jsonify({'error': f'DNS zone "{data["dns_zone"]}" not found in resource group "{data["resource_group"]}".'}), 404
+            elif 'AuthorizationFailed' in error_msg:
+                return jsonify({'error': 'Authorization failed. The service principal does not have permission to access this DNS zone.'}), 403
+            else:
+                return jsonify({'error': f'Connection failed: {error_msg}'}), 500
+                
+    except Exception as e:
+        print(f"Error testing configuration: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/records', methods=['GET'])
 def get_records():
     """Get all DNS records from the zone"""
     try:
-        print(f"Attempting to connect to Azure DNS Zone: {DNS_ZONE}")
-        print(f"Resource Group: {RESOURCE_GROUP}")
-        print(f"Subscription ID: {SUBSCRIPTION_ID}")
+        # Check if configuration is complete
+        if not is_config_complete():
+            return jsonify({'error': 'Azure configuration is incomplete. Please configure your credentials.'}), 400
+        
+        print(f"Attempting to connect to Azure DNS Zone: {config['DNS_ZONE']}")
+        print(f"Resource Group: {config['RESOURCE_GROUP']}")
+        print(f"Subscription ID: {config['SUBSCRIPTION_ID']}")
         
         client = get_dns_client()
         record_sets = client.record_sets.list_by_dns_zone(
-            RESOURCE_GROUP,
-            DNS_ZONE
+            config['RESOURCE_GROUP'],
+            config['DNS_ZONE']
         )
         
         records = []
@@ -90,7 +262,7 @@ def get_records():
             records.append(record_data)
         
         print(f"Successfully retrieved {len(records)} records")
-        return jsonify({'records': records, 'zone': DNS_ZONE})
+        return jsonify({'records': records, 'zone': config['DNS_ZONE']})
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
@@ -138,8 +310,8 @@ def create_record():
         
         # Create the record
         result = client.record_sets.create_or_update(
-            RESOURCE_GROUP,
-            DNS_ZONE,
+            config['RESOURCE_GROUP'],
+            config['DNS_ZONE'],
             record_name,
             record_type,
             record_set
@@ -187,8 +359,8 @@ def update_record(record_type, record_name):
         
         # Update the record
         result = client.record_sets.create_or_update(
-            RESOURCE_GROUP,
-            DNS_ZONE,
+            config['RESOURCE_GROUP'],
+            config['DNS_ZONE'],
             record_name,
             record_type,
             record_set
@@ -206,8 +378,8 @@ def delete_record(record_type, record_name):
         
         # Delete the record
         client.record_sets.delete(
-            RESOURCE_GROUP,
-            DNS_ZONE,
+            config['RESOURCE_GROUP'],
+            config['DNS_ZONE'],
             record_name,
             record_type
         )

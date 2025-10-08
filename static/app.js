@@ -22,20 +22,39 @@ const deselectAllBtn = document.getElementById('deselectAllBtn');
 const darkModeToggle = document.getElementById('darkModeToggle');
 const moonIcon = document.getElementById('moonIcon');
 const sunIcon = document.getElementById('sunIcon');
+const settingsBtn = document.getElementById('settingsBtn');
 
 // Store all records and selected types
 let allRecords = [];
 let selectedTypes = new Set();
 
+// Check configuration status
+async function checkConfigStatus() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/config/status`);
+        const data = await response.json();
+        
+        if (!data.configured) {
+            // Redirect to settings page if not configured
+            window.location.href = '/settings.html';
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('Failed to check config status:', error);
+        return false;
+    }
+}
+
 // Dark Mode
 function initDarkMode() {
-    // Check localStorage or system preference
+    // Check localStorage first, default to light theme if not set
     const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+    if (savedTheme === 'dark') {
         enableDarkMode();
     }
+    // Default to light theme (do nothing)
 }
 
 function toggleDarkMode() {
@@ -61,8 +80,15 @@ function disableDarkMode() {
 }
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initDarkMode();
+    
+    // Check if Azure credentials are configured
+    const isConfigured = await checkConfigStatus();
+    if (!isConfigured) {
+        return; // Will be redirected to settings page
+    }
+    
     loadRecords();
     
     // Event listeners
@@ -76,6 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     deselectAllBtn.addEventListener('click', deselectAllFilters);
     searchInput.addEventListener('input', applyFilters);
     darkModeToggle.addEventListener('click', toggleDarkMode);
+    settingsBtn.addEventListener('click', () => window.location.href = '/settings.html');
     
     // Close buttons for modals
     document.querySelectorAll('.close').forEach(closeBtn => {
