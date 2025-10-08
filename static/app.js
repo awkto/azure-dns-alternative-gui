@@ -9,8 +9,10 @@ const addRecordForm = document.getElementById('addRecordForm');
 const refreshBtn = document.getElementById('refreshBtn');
 const editModal = document.getElementById('editModal');
 const editRecordForm = document.getElementById('editRecordForm');
-const closeModal = document.querySelector('.close');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
+const addModal = document.getElementById('addModal');
+const addRecordBtn = document.getElementById('addRecordBtn');
+const cancelAddBtn = document.getElementById('cancelAddBtn');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -20,13 +22,28 @@ document.addEventListener('DOMContentLoaded', () => {
     addRecordForm.addEventListener('submit', handleAddRecord);
     editRecordForm.addEventListener('submit', handleEditRecord);
     refreshBtn.addEventListener('click', loadRecords);
-    closeModal.addEventListener('click', hideEditModal);
+    addRecordBtn.addEventListener('click', showAddModal);
     cancelEditBtn.addEventListener('click', hideEditModal);
+    cancelAddBtn.addEventListener('click', hideAddModal);
     
-    // Close modal when clicking outside
+    // Close buttons for modals (using querySelectorAll to get all close buttons)
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            // Find the parent modal and hide it
+            const modal = this.closest('.modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+    
+    // Close modals when clicking outside
     window.addEventListener('click', (e) => {
         if (e.target === editModal) {
             hideEditModal();
+        }
+        if (e.target === addModal) {
+            hideAddModal();
         }
     });
 });
@@ -71,16 +88,23 @@ function displayRecords(records) {
         // Format values
         const valuesHtml = record.values.map(val => `<div class="value-item">${escapeHtml(val)}</div>`).join('');
         
+        // Check if this is a root NS or SOA record (cannot be deleted in Azure)
+        const isProtectedRecord = (record.name === '@' && (record.type === 'NS' || record.type === 'SOA'));
+        const deleteButtonDisabled = isProtectedRecord ? 'disabled title="Azure root NS and SOA records cannot be deleted"' : '';
+        const deleteButtonClass = isProtectedRecord ? 'btn btn-small btn-danger btn-disabled' : 'btn btn-small btn-danger';
+        const editButtonDisabled = isProtectedRecord ? 'disabled title="Azure root NS and SOA records cannot be edited"' : '';
+        const editButtonClass = isProtectedRecord ? 'btn btn-small btn-primary btn-disabled' : 'btn btn-small btn-primary';
+        
         row.innerHTML = `
             <td><strong>${escapeHtml(record.name)}</strong><br><small>${escapeHtml(record.fqdn)}</small></td>
             <td><span class="badge badge-${record.type.toLowerCase()}">${escapeHtml(record.type)}</span></td>
             <td>${record.ttl}s</td>
             <td class="values-cell">${valuesHtml}</td>
             <td class="actions-cell">
-                <button class="btn btn-small btn-primary" onclick="editRecord('${escapeHtml(record.name)}', '${escapeHtml(record.type)}', ${record.ttl}, ${JSON.stringify(record.values).replace(/"/g, '&quot;')})">
+                <button class="${editButtonClass}" ${editButtonDisabled} onclick="editRecord('${escapeHtml(record.name)}', '${escapeHtml(record.type)}', ${record.ttl}, ${JSON.stringify(record.values).replace(/"/g, '&quot;')})">
                     ✏️ Edit
                 </button>
-                <button class="btn btn-small btn-danger" onclick="deleteRecord('${escapeHtml(record.name)}', '${escapeHtml(record.type)}')">
+                <button class="${deleteButtonClass}" ${deleteButtonDisabled} onclick="deleteRecord('${escapeHtml(record.name)}', '${escapeHtml(record.type)}')">
                     🗑️ Delete
                 </button>
             </td>
@@ -124,6 +148,7 @@ async function handleAddRecord(e) {
         
         showSuccess('Record created successfully!');
         addRecordForm.reset();
+        hideAddModal();
         loadRecords();
     } catch (error) {
         showError(`Failed to create record: ${error.message}`);
@@ -208,6 +233,14 @@ async function deleteRecord(name, type) {
 // Modal functions
 function hideEditModal() {
     editModal.style.display = 'none';
+}
+
+function showAddModal() {
+    addModal.style.display = 'block';
+}
+
+function hideAddModal() {
+    addModal.style.display = 'none';
 }
 
 // UI Helper functions
