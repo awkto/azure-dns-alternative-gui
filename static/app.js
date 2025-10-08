@@ -89,6 +89,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return; // Will be redirected to settings page
     }
     
+    // Only load records if configured
     loadRecords();
     
     // Event listeners

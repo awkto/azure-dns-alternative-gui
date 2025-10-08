@@ -18,6 +18,9 @@ const toggleSecretBtn = document.getElementById('toggleSecretBtn');
 const eyeIcon = document.getElementById('eyeIcon');
 const eyeOffIcon = document.getElementById('eyeOffIcon');
 
+// Track if this is a first-time setup
+let isSetupMode = false;
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadCurrentConfig();
@@ -50,6 +53,32 @@ async function loadCurrentConfig() {
         const data = await response.json();
         
         if (response.ok) {
+            // Check if any configuration is missing (SETUP MODE)
+            const hasAnyConfig = data.tenant_id || data.client_id || data.subscription_id || 
+                                data.resource_group || data.dns_zone;
+            
+            isSetupMode = !hasAnyConfig;
+            
+            // Update UI based on setup mode
+            const backNavigation = document.getElementById('backNavigation');
+            const settingsDescription = document.getElementById('settingsDescription');
+            
+            if (isSetupMode) {
+                // Hide back button in setup mode
+                if (backNavigation) {
+                    backNavigation.style.display = 'none';
+                }
+                // Update description for first-time setup
+                if (settingsDescription) {
+                    settingsDescription.innerHTML = '🚀 <strong>Welcome!</strong> Please configure your Azure credentials to get started.';
+                }
+            } else {
+                // Show back button when configuration exists
+                if (backNavigation) {
+                    backNavigation.style.display = 'block';
+                }
+            }
+            
             // Populate form with current config
             tenantIdInput.value = data.tenant_id || '';
             clientIdInput.value = data.client_id || '';
