@@ -10,6 +10,7 @@ body {
     min-height: 100vh;
     padding: 20px;
     color: #333;
+    line-height: 1.6;
 }
 
 .container {
@@ -20,8 +21,8 @@ body {
 header {
     background: white;
     padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     margin-bottom: 30px;
     display: flex;
     justify-content: space-between;
@@ -30,17 +31,20 @@ header {
     gap: 20px;
 }
 
+header > div:first-child {
+    flex-grow: 1;
+}
+
 header h1 {
     font-size: 2.5em;
     color: #667eea;
-    margin: 0;
+    margin: 0 0 10px 0;
 }
 
 .zone-info {
     font-size: 1.1em;
     color: #666;
-    flex-grow: 1;
-    margin-left: 20px;
+    margin: 0;
 }
 
 .zone-info span {
@@ -48,23 +52,27 @@ header h1 {
     color: #764ba2;
 }
 
+.header-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .main-content {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 30px;
+    display: block;
 }
 
 @media (max-width: 1200px) {
     .main-content {
-        grid-template-columns: 1fr;
+        display: block;
     }
 }
 
 .card {
     background: white;
     padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .card h2 {
@@ -125,32 +133,34 @@ header h1 {
 .btn {
     padding: 12px 24px;
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
     font-size: 1em;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn-primary {
-    background: #667eea;
+    background: #6366f1;
     color: white;
 }
 
 .btn-primary:hover {
-    background: #5568d3;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+    background: #4f46e5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
 }
 
 .btn-success {
     background: #10b981;
     color: white;
-    width: 100%;
 }
 
 .btn-success:hover {
     background: #059669;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
 }
 
 .btn-secondary {
@@ -160,21 +170,47 @@ header h1 {
 
 .btn-secondary:hover {
     background: #4b5563;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(107, 114, 128, 0.3);
 }
 
 .btn-danger {
-    background: #ef4444;
+    background: #f87171;
     color: white;
 }
 
 .btn-danger:hover {
-    background: #dc2626;
+    background: #ef4444;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(248, 113, 113, 0.3);
 }
 
 .btn-small {
-    padding: 6px 12px;
-    font-size: 0.85em;
+    padding: 8px 16px;
+    font-size: 0.875em;
     margin: 2px;
+    border-radius: 5px;
+}
+
+.btn-disabled {
+    opacity: 0.4;
+    cursor: not-allowed !important;
+}
+
+.btn-disabled:hover {
+    transform: none !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    background: inherit !important;
+}
+
+.form-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.form-buttons .btn {
+    flex: 1;
 }
 
 /* Table */
@@ -210,12 +246,14 @@ tbody tr:hover {
 }
 
 .values-cell {
-    font-family: monospace;
-    font-size: 0.9em;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 1.1em;
+    line-height: 1.6;
 }
 
 .value-item {
-    padding: 4px 0;
+    padding: 6px 0;
+    font-weight: 500;
 }
 
 .actions-cell {
@@ -275,20 +313,20 @@ tbody tr:hover {
 }
 
 .error {
-    background: #fef2f2;
-    border: 2px solid #ef4444;
-    color: #991b1b;
-    padding: 15px;
-    border-radius: 5px;
+    background: #fee;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+    padding: 15px 20px;
+    border-radius: 8px;
     margin-bottom: 20px;
 }
 
 .success {
     background: #f0fdf4;
-    border: 2px solid #10b981;
-    color: #065f46;
-    padding: 15px;
-    border-radius: 5px;
+    border: 1px solid #86efac;
+    color: #059669;
+    padding: 15px 20px;
+    border-radius: 8px;
     margin-bottom: 20px;
     animation: slideDown 0.3s ease-out;
 }
@@ -345,16 +383,20 @@ tbody tr:hover {
 }
 
 .close {
-    color: #aaa;
+    color: #9ca3af;
     float: right;
-    font-size: 28px;
+    font-size: 32px;
     font-weight: bold;
     cursor: pointer;
-    transition: color 0.3s;
+    transition: all 0.2s ease;
+    line-height: 1;
+    padding: 0 5px;
+    margin: -5px -5px 0 0;
 }
 
 .close:hover {
-    color: #000;
+    color: #374151;
+    transform: scale(1.1);
 }
 
 /* Responsive */
@@ -365,6 +407,11 @@ tbody tr:hover {
     
     header h1 {
         font-size: 1.8em;
+    }
+    
+    .header-buttons {
+        width: 100%;
+        justify-content: center;
     }
     
     .zone-info {
@@ -383,5 +430,9 @@ tbody tr:hover {
         display: block;
         width: 100%;
         margin: 5px 0;
+    }
+    
+    .values-cell {
+        font-size: 1em;
     }
 }
