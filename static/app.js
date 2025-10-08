@@ -2,6 +2,7 @@ const API_BASE_URL = 'http://localhost:5000/api';
 
 // DOM Elements
 const zoneName = document.getElementById('zoneName');
+const recordCount = document.getElementById('recordCount');
 const recordsTableBody = document.getElementById('recordsTableBody');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const errorMessage = document.getElementById('errorMessage');
@@ -13,16 +14,55 @@ const cancelEditBtn = document.getElementById('cancelEditBtn');
 const addModal = document.getElementById('addModal');
 const addRecordBtn = document.getElementById('addRecordBtn');
 const cancelAddBtn = document.getElementById('cancelAddBtn');
-const toggleFilterBtn = document.getElementById('toggleFilterBtn');
-const filterSection = document.getElementById('filterSection');
+const searchInput = document.getElementById('searchInput');
+const resultsCount = document.getElementById('resultsCount');
+const typeFilters = document.getElementById('typeFilters');
 const selectAllBtn = document.getElementById('selectAllBtn');
 const deselectAllBtn = document.getElementById('deselectAllBtn');
+const darkModeToggle = document.getElementById('darkModeToggle');
+const moonIcon = document.getElementById('moonIcon');
+const sunIcon = document.getElementById('sunIcon');
 
-// Store all records for filtering
+// Store all records and selected types
 let allRecords = [];
+let selectedTypes = new Set();
+
+// Dark Mode
+function initDarkMode() {
+    // Check localStorage or system preference
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        enableDarkMode();
+    }
+}
+
+function toggleDarkMode() {
+    if (document.body.classList.contains('dark-mode')) {
+        disableDarkMode();
+    } else {
+        enableDarkMode();
+    }
+}
+
+function enableDarkMode() {
+    document.body.classList.add('dark-mode');
+    localStorage.setItem('theme', 'dark');
+    moonIcon.style.display = 'none';
+    sunIcon.style.display = 'block';
+}
+
+function disableDarkMode() {
+    document.body.classList.remove('dark-mode');
+    localStorage.setItem('theme', 'light');
+    moonIcon.style.display = 'block';
+    sunIcon.style.display = 'none';
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    initDarkMode();
     loadRecords();
     
     // Event listeners
@@ -32,34 +72,29 @@ document.addEventListener('DOMContentLoaded', () => {
     addRecordBtn.addEventListener('click', showAddModal);
     cancelEditBtn.addEventListener('click', hideEditModal);
     cancelAddBtn.addEventListener('click', hideAddModal);
-    toggleFilterBtn.addEventListener('click', toggleFilter);
     selectAllBtn.addEventListener('click', selectAllFilters);
     deselectAllBtn.addEventListener('click', deselectAllFilters);
+    searchInput.addEventListener('input', applyFilters);
+    darkModeToggle.addEventListener('click', toggleDarkMode);
     
-    // Filter checkboxes
-    document.querySelectorAll('.record-filter').forEach(checkbox => {
-        checkbox.addEventListener('change', applyFilters);
-    });
-    
-    // Close buttons for modals (using querySelectorAll to get all close buttons)
+    // Close buttons for modals
     document.querySelectorAll('.close').forEach(closeBtn => {
         closeBtn.addEventListener('click', function() {
-            // Find the parent modal and hide it
             const modal = this.closest('.modal');
             if (modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('active');
             }
         });
     });
     
-    // Close modals when clicking outside
-    window.addEventListener('click', (e) => {
-        if (e.target === editModal) {
-            hideEditModal();
-        }
-        if (e.target === addModal) {
-            hideAddModal();
-        }
+    // Close modals when clicking backdrop
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+        backdrop.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        });
     });
 });
 
@@ -78,8 +113,13 @@ async function loadRecords() {
         }
         
         zoneName.textContent = data.zone;
-        allRecords = data.records; // Store all records
-        applyFilters(); // Apply current filters
+        allRecords = data.records;
+        
+        // Build filter buttons from record types
+        buildTypeFilters();
+        
+        // Apply filters
+        applyFilters();
         
         showLoading(false);
     } catch (error) {
@@ -94,39 +134,81 @@ function displayRecords(records) {
     recordsTableBody.innerHTML = '';
     
     if (records.length === 0) {
-        recordsTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No records found</td></tr>';
+        recordsTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 3rem; color: var(--color-slate-500);">No records found</td></tr>';
         return;
     }
     
-    records.forEach(record => {
+    records.forEach((record, index) => {
         const row = document.createElement('tr');
         
-        // Format values
-        const valuesHtml = record.values.map(val => `<div class="value-item">${escapeHtml(val)}</div>`).join('');
-        
-        // Check if this is a root NS or SOA record (cannot be deleted in Azure)
+        // Check if this is a protected record
         const isProtectedRecord = (record.name === '@' && (record.type === 'NS' || record.type === 'SOA'));
-        const deleteButtonDisabled = isProtectedRecord ? 'disabled title="Azure root NS and SOA records cannot be deleted"' : '';
-        const deleteButtonClass = isProtectedRecord ? 'btn btn-small btn-danger btn-disabled' : 'btn btn-small btn-danger';
-        const editButtonDisabled = isProtectedRecord ? 'disabled title="Azure root NS and SOA records cannot be edited"' : '';
-        const editButtonClass = isProtectedRecord ? 'btn btn-small btn-primary btn-disabled' : 'btn btn-small btn-primary';
+        
+        const editDisabled = isProtectedRecord ? 'btn-disabled' : '';
+        const editTitle = isProtectedRecord ? 'title="Azure root NS and SOA records cannot be edited"' : '';
+        const deleteDisabled = isProtectedRecord ? 'btn-disabled' : '';
+        const deleteTitle = isProtectedRecord ? 'title="Azure root NS and SOA records cannot be deleted"' : '';
+        
+        const valuesHtml = record.values.map(val => escapeHtml(val)).join('<br>');
         
         row.innerHTML = `
-            <td><strong>${escapeHtml(record.name)}</strong><br><small>${escapeHtml(record.fqdn)}</small></td>
-            <td><span class="badge badge-${record.type.toLowerCase()}">${escapeHtml(record.type)}</span></td>
-            <td>${record.ttl}s</td>
-            <td class="values-cell">${valuesHtml}</td>
-            <td class="actions-cell">
-                <button class="${editButtonClass}" ${editButtonDisabled} onclick="editRecord('${escapeHtml(record.name)}', '${escapeHtml(record.type)}', ${record.ttl}, ${JSON.stringify(record.values).replace(/"/g, '&quot;')})">
-                    ✏️ Edit
-                </button>
-                <button class="${deleteButtonClass}" ${deleteButtonDisabled} onclick="deleteRecord('${escapeHtml(record.name)}', '${escapeHtml(record.type)}')">
-                    🗑️ Delete
-                </button>
+            <td>
+                <div class="record-name">${escapeHtml(record.name)}</div>
+                <div class="record-fqdn">${escapeHtml(record.fqdn)}</div>
+            </td>
+            <td>
+                <span class="type-badge type-badge-${escapeHtml(record.type)}">${escapeHtml(record.type)}</span>
+            </td>
+            <td class="tabular-nums">${record.ttl}s</td>
+            <td class="record-values">${valuesHtml}</td>
+            <td class="col-actions">
+                <div class="actions-group">
+                    <button class="btn btn-action btn-action-edit ${editDisabled}" ${editTitle} ${isProtectedRecord ? 'disabled' : ''} 
+                            onclick="editRecord('${escapeHtml(record.name)}', '${escapeHtml(record.type)}', ${record.ttl}, ${JSON.stringify(record.values).replace(/"/g, '&quot;')})">
+                        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        Edit
+                    </button>
+                    <button class="btn btn-action btn-action-delete ${deleteDisabled}" ${deleteTitle} ${isProtectedRecord ? 'disabled' : ''}
+                            onclick="deleteRecord('${escapeHtml(record.name)}', '${escapeHtml(record.type)}')">
+                        <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        Delete
+                    </button>
+                </div>
             </td>
         `;
         
         recordsTableBody.appendChild(row);
+    });
+}
+
+// Build dynamic type filter buttons
+function buildTypeFilters() {
+    const types = [...new Set(allRecords.map(r => r.type))].sort();
+    typeFilters.innerHTML = '';
+    
+    types.forEach(type => {
+        const button = document.createElement('button');
+        button.className = 'filter-chip filter-chip-active';
+        button.dataset.type = type;
+        button.innerHTML = `<span class="type-badge type-badge-${type}">${type}</span>`;
+        
+        button.addEventListener('click', () => {
+            if (selectedTypes.has(type)) {
+                selectedTypes.delete(type);
+                button.classList.remove('filter-chip-active');
+            } else {
+                selectedTypes.add(type);
+                button.classList.add('filter-chip-active');
+            }
+            applyFilters();
+        });
+        
+        typeFilters.appendChild(button);
+        selectedTypes.add(type); // Start with all types selected
     });
 }
 
@@ -180,7 +262,7 @@ function editRecord(name, type, ttl, values) {
     document.getElementById('editRecordTTL').value = ttl;
     document.getElementById('editRecordValues').value = values.join('\n');
     
-    editModal.style.display = 'block';
+    editModal.classList.add('active');
 }
 
 // Handle edit form submission
@@ -248,15 +330,15 @@ async function deleteRecord(name, type) {
 
 // Modal functions
 function hideEditModal() {
-    editModal.style.display = 'none';
+    editModal.classList.remove('active');
 }
 
 function showAddModal() {
-    addModal.style.display = 'block';
+    addModal.classList.add('active');
 }
 
 function hideAddModal() {
-    addModal.style.display = 'none';
+    addModal.classList.remove('active');
 }
 
 // UI Helper functions
@@ -295,51 +377,56 @@ function escapeHtml(text) {
 }
 
 // Filter functions
-function toggleFilter() {
-    if (filterSection.style.display === 'none') {
-        filterSection.style.display = 'block';
-        toggleFilterBtn.textContent = '🔍 Hide Filter';
-    } else {
-        filterSection.style.display = 'none';
-        toggleFilterBtn.textContent = '🔍 Filter Records';
-    }
-}
-
 function selectAllFilters() {
-    document.querySelectorAll('.record-filter').forEach(checkbox => {
-        checkbox.checked = true;
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.classList.add('filter-chip-active');
+        const type = chip.dataset.type;
+        if (type) selectedTypes.add(type);
     });
     applyFilters();
 }
 
 function deselectAllFilters() {
-    document.querySelectorAll('.record-filter').forEach(checkbox => {
-        checkbox.checked = false;
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.classList.remove('filter-chip-active');
+        const type = chip.dataset.type;
+        if (type) selectedTypes.delete(type);
     });
     applyFilters();
 }
 
 function applyFilters() {
-    // Get selected record types
-    const selectedTypes = Array.from(document.querySelectorAll('.record-filter:checked'))
-        .map(cb => cb.value);
+    const searchTerm = searchInput.value.toLowerCase().trim();
     
-    // Filter records
-    const filteredRecords = allRecords.filter(record => 
-        selectedTypes.includes(record.type)
-    );
+    // Filter by type and search
+    const filteredRecords = allRecords.filter(record => {
+        // Check type filter
+        if (!selectedTypes.has(record.type)) {
+            return false;
+        }
+        
+        // Check search term
+        if (searchTerm) {
+            const searchableText = [
+                record.name,
+                record.type,
+                record.fqdn,
+                record.ttl.toString(),
+                ...record.values
+            ].join(' ').toLowerCase();
+            
+            if (!searchableText.includes(searchTerm)) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    // Update counts
+    recordCount.textContent = allRecords.length;
+    resultsCount.textContent = filteredRecords.length;
     
     // Display filtered records
     displayRecords(filteredRecords);
-    
-    // Update filter button text with count
-    const totalCount = allRecords.length;
-    const filteredCount = filteredRecords.length;
-    if (filteredCount < totalCount) {
-        toggleFilterBtn.textContent = `🔍 Filter (${filteredCount}/${totalCount})`;
-    } else {
-        toggleFilterBtn.textContent = filterSection.style.display === 'none' 
-            ? '🔍 Filter Records' 
-            : '🔍 Hide Filter';
-    }
 }
