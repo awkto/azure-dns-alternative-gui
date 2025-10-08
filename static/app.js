@@ -38,16 +38,19 @@ async function loadRecords() {
         hideError();
         
         const response = await fetch(`${API_BASE_URL}/records`);
+        const data = await response.json();
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            console.error('Error response:', data);
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
         }
         
-        const data = await response.json();
         zoneName.textContent = data.zone;
         displayRecords(data.records);
         
         showLoading(false);
     } catch (error) {
+        console.error('Failed to load records:', error);
         showError(`Failed to load records: ${error.message}`);
         showLoading(false);
     }
