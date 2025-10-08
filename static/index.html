@@ -9,14 +9,46 @@
 <body>
     <div class="container">
         <header>
-            <h1>🌐 Azure DNS Manager</h1>
-            <p class="zone-info">Zone: <span id="zoneName">Loading...</span></p>
-            <button id="refreshBtn" class="btn btn-primary">🔄 Refresh</button>
+            <div>
+                <h1>🌐 Azure DNS Manager</h1>
+                <p class="zone-info">Zone: <span id="zoneName">Loading...</span></p>
+            </div>
+            <div class="header-buttons">
+                <button id="addRecordBtn" class="btn btn-success">➕ Add New Record</button>
+                <button id="refreshBtn" class="btn btn-primary">🔄 Refresh</button>
+            </div>
         </header>
 
         <div class="main-content">
-            <!-- Add New Record Section -->
+            <!-- DNS Records Table -->
             <section class="card">
+                <h2>📋 DNS Records</h2>
+                <div id="loadingIndicator" class="loading">Loading records...</div>
+                <div id="errorMessage" class="error" style="display: none;"></div>
+                
+                <div class="table-container">
+                    <table id="recordsTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>TTL</th>
+                                <th>Values</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsTableBody">
+                            <!-- Records will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- Add Record Modal -->
+        <div id="addModal" class="modal">
+            <div class="modal-content">
+                <span class="close close-add">&times;</span>
                 <h2>➕ Add New DNS Record</h2>
                 <form id="addRecordForm">
                     <div class="form-group">
@@ -48,33 +80,12 @@
                         <small>Enter one value per line. For multiple A records, add multiple IPs.</small>
                     </div>
                     
-                    <button type="submit" class="btn btn-success">Add Record</button>
+                    <div class="form-buttons">
+                        <button type="submit" class="btn btn-success">Add Record</button>
+                        <button type="button" class="btn btn-secondary" id="cancelAddBtn">Cancel</button>
+                    </div>
                 </form>
-            </section>
-
-            <!-- DNS Records Table -->
-            <section class="card">
-                <h2>📋 DNS Records</h2>
-                <div id="loadingIndicator" class="loading">Loading records...</div>
-                <div id="errorMessage" class="error" style="display: none;"></div>
-                
-                <div class="table-container">
-                    <table id="recordsTable">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Type</th>
-                                <th>TTL</th>
-                                <th>Values</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recordsTableBody">
-                            <!-- Records will be populated here -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+            </div>
         </div>
 
         <!-- Edit Modal -->
@@ -107,8 +118,10 @@
                         <small>Enter one value per line.</small>
                     </div>
                     
-                    <button type="submit" class="btn btn-success">Update Record</button>
-                    <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+                    <div class="form-buttons">
+                        <button type="submit" class="btn btn-success">Update Record</button>
+                        <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+                    </div>
                 </form>
             </div>
         </div>
