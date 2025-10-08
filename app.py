@@ -48,6 +48,10 @@ def health_check():
 def get_records():
     """Get all DNS records from the zone"""
     try:
+        print(f"Attempting to connect to Azure DNS Zone: {DNS_ZONE}")
+        print(f"Resource Group: {RESOURCE_GROUP}")
+        print(f"Subscription ID: {SUBSCRIPTION_ID}")
+        
         client = get_dns_client()
         record_sets = client.record_sets.list_by_dns_zone(
             RESOURCE_GROUP,
@@ -85,9 +89,14 @@ def get_records():
             
             records.append(record_data)
         
+        print(f"Successfully retrieved {len(records)} records")
         return jsonify({'records': records, 'zone': DNS_ZONE})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ERROR: {str(e)}")
+        print(error_details)
+        return jsonify({'error': str(e), 'details': error_details}), 500
 
 @app.route('/api/records', methods=['POST'])
 def create_record():
