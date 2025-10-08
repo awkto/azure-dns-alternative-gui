@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  azure-dns-manager:
+    image: yourusername/azure-dns-manager:latest
+    container_name: azure-dns-manager
+    ports:
+      - "5000:5000"
+    environment:
+      # Azure Service Principal Credentials
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      
+      # Azure DNS Configuration
+      - AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}
+      - AZURE_RESOURCE_GROUP=${AZURE_RESOURCE_GROUP}
+      - AZURE_DNS_ZONE=${AZURE_DNS_ZONE}
+    
+    # Optionally mount .env file for persistence
+    # volumes:
+    #   - ./.env:/app/.env
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    
+    # Resource limits (optional)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
