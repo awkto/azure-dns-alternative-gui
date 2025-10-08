@@ -13,6 +13,13 @@ const cancelEditBtn = document.getElementById('cancelEditBtn');
 const addModal = document.getElementById('addModal');
 const addRecordBtn = document.getElementById('addRecordBtn');
 const cancelAddBtn = document.getElementById('cancelAddBtn');
+const toggleFilterBtn = document.getElementById('toggleFilterBtn');
+const filterSection = document.getElementById('filterSection');
+const selectAllBtn = document.getElementById('selectAllBtn');
+const deselectAllBtn = document.getElementById('deselectAllBtn');
+
+// Store all records for filtering
+let allRecords = [];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -25,6 +32,14 @@ document.addEventListener('DOMContentLoaded', () => {
     addRecordBtn.addEventListener('click', showAddModal);
     cancelEditBtn.addEventListener('click', hideEditModal);
     cancelAddBtn.addEventListener('click', hideAddModal);
+    toggleFilterBtn.addEventListener('click', toggleFilter);
+    selectAllBtn.addEventListener('click', selectAllFilters);
+    deselectAllBtn.addEventListener('click', deselectAllFilters);
+    
+    // Filter checkboxes
+    document.querySelectorAll('.record-filter').forEach(checkbox => {
+        checkbox.addEventListener('change', applyFilters);
+    });
     
     // Close buttons for modals (using querySelectorAll to get all close buttons)
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -63,7 +78,8 @@ async function loadRecords() {
         }
         
         zoneName.textContent = data.zone;
-        displayRecords(data.records);
+        allRecords = data.records; // Store all records
+        applyFilters(); // Apply current filters
         
         showLoading(false);
     } catch (error) {
@@ -276,4 +292,54 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Filter functions
+function toggleFilter() {
+    if (filterSection.style.display === 'none') {
+        filterSection.style.display = 'block';
+        toggleFilterBtn.textContent = '🔍 Hide Filter';
+    } else {
+        filterSection.style.display = 'none';
+        toggleFilterBtn.textContent = '🔍 Filter Records';
+    }
+}
+
+function selectAllFilters() {
+    document.querySelectorAll('.record-filter').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    applyFilters();
+}
+
+function deselectAllFilters() {
+    document.querySelectorAll('.record-filter').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    applyFilters();
+}
+
+function applyFilters() {
+    // Get selected record types
+    const selectedTypes = Array.from(document.querySelectorAll('.record-filter:checked'))
+        .map(cb => cb.value);
+    
+    // Filter records
+    const filteredRecords = allRecords.filter(record => 
+        selectedTypes.includes(record.type)
+    );
+    
+    // Display filtered records
+    displayRecords(filteredRecords);
+    
+    // Update filter button text with count
+    const totalCount = allRecords.length;
+    const filteredCount = filteredRecords.length;
+    if (filteredCount < totalCount) {
+        toggleFilterBtn.textContent = `🔍 Filter (${filteredCount}/${totalCount})`;
+    } else {
+        toggleFilterBtn.textContent = filterSection.style.display === 'none' 
+            ? '🔍 Filter Records' 
+            : '🔍 Hide Filter';
+    }
 }
