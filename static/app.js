@@ -94,6 +94,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         darkModeToggle.addEventListener('click', toggleDarkMode);
     }
     
+    // Easter egg: Toggle version number visibility
+    const iconBadge = document.getElementById('iconBadge');
+    const versionNumber = document.getElementById('versionNumber');
+    if (iconBadge && versionNumber) {
+        iconBadge.addEventListener('click', () => {
+            if (versionNumber.style.display === 'none' || versionNumber.style.display === '') {
+                versionNumber.style.display = 'inline';
+            } else {
+                versionNumber.style.display = 'none';
+            }
+        });
+    }
+    
     // Check if Azure credentials are configured
     const isConfigured = await checkConfigStatus();
     if (!isConfigured) {
