@@ -3,3 +3,4 @@ flask-cors==4.0.0
 azure-identity==1.15.0
 azure-mgmt-dns==8.1.0
 python-dotenv==1.0.0
+flasgger==0.9.7.1
