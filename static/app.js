@@ -124,6 +124,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isAuthenticated = await checkAuth();
     if (!isAuthenticated) return;
 
+    // Restore search term from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const qParam = urlParams.get('q');
+    if (qParam) {
+        searchInput.value = qParam;
+    }
+
+    // Handle browser back/forward
+    window.addEventListener('popstate', (event) => {
+        searchInput.value = event.state?.q ?? new URLSearchParams(window.location.search).get('q') ?? '';
+        applyFilters();
+    });
+
     // Always attach settings button listener first, so it works even in SETUP MODE
     if (settingsBtn) {
         settingsBtn.addEventListener('click', () => window.location.href = '/settings.html');
@@ -491,9 +504,21 @@ function deselectAllFilters() {
     applyFilters();
 }
 
+function updateUrlState() {
+    const searchTerm = searchInput.value.trim();
+    const url = new URL(window.location);
+    if (searchTerm) {
+        url.searchParams.set('q', searchTerm);
+    } else {
+        url.searchParams.delete('q');
+    }
+    history.replaceState({ q: searchTerm }, '', url);
+}
+
 function applyFilters() {
     const searchTerm = searchInput.value.toLowerCase().trim();
-    
+    updateUrlState();
+
     // Filter by type and search
     const filteredRecords = allRecords.filter(record => {
         // Check type filter
