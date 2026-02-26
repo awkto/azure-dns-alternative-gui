@@ -1,6 +1,42 @@
 // Use relative URL so it works regardless of hostname/IP
 const API_BASE_URL = '/api';
 
+// Auth check — redirect to login if not authenticated
+async function checkAuth() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/status`);
+        const data = await response.json();
+        if (!data.authenticated) {
+            window.location.href = '/login.html';
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        window.location.href = '/login.html';
+        return false;
+    }
+}
+
+// Wrap fetch to intercept 401 responses globally
+const _originalFetch = window.fetch;
+window.fetch = async function(...args) {
+    const response = await _originalFetch.apply(this, args);
+    if (response.status === 401) {
+        const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || '';
+        if (!url.includes('/api/auth/')) {
+            window.location.href = '/login.html';
+        }
+    }
+    return response;
+};
+
+// Logout handler
+async function handleLogout() {
+    await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' });
+    window.location.href = '/login.html';
+}
+
 // DOM Elements
 const zoneName = document.getElementById('zoneName');
 const recordCount = document.getElementById('recordCount');
@@ -83,17 +119,27 @@ function disableDarkMode() {
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     initDarkMode();
-    
+
+    // Check authentication first
+    const isAuthenticated = await checkAuth();
+    if (!isAuthenticated) return;
+
     // Always attach settings button listener first, so it works even in SETUP MODE
     if (settingsBtn) {
         settingsBtn.addEventListener('click', () => window.location.href = '/settings.html');
     }
-    
+
     // Always attach dark mode toggle
     if (darkModeToggle) {
         darkModeToggle.addEventListener('click', toggleDarkMode);
     }
-    
+
+    // Logout button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+
     // Easter egg: Toggle version number visibility
     const iconBadge = document.getElementById('iconBadge');
     const versionNumber = document.getElementById('versionNumber');
@@ -106,7 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
-    
+
     // Check if Azure credentials are configured
     const isConfigured = await checkConfigStatus();
     if (!isConfigured) {
