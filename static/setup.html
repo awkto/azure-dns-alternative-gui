@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Azure DNS Manager</title>
+    <title>Setup - Azure DNS Manager</title>
     <link rel="stylesheet" href="styles.css">
     <style>
         .login-wrapper {
@@ -80,21 +80,26 @@
             <div class="login-header">
                 <div class="icon-badge">
                     <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                     </svg>
                 </div>
                 <h1>Azure DNS Manager</h1>
-                <p>Enter your password to continue</p>
+                <p>Create your admin password to get started</p>
             </div>
             <div class="login-body">
-                <div class="login-error" id="loginError"></div>
-                <form id="loginForm">
+                <div class="login-error" id="setupError"></div>
+                <form id="setupForm">
                     <div class="form-group">
                         <label for="passwordInput">Password</label>
                         <input type="password" id="passwordInput" class="form-input" required
-                               placeholder="Enter your password" autofocus>
+                               placeholder="Choose a password" autofocus>
                     </div>
-                    <button type="submit" class="btn btn-primary" id="loginBtn">Login</button>
+                    <div class="form-group">
+                        <label for="confirmInput">Confirm Password</label>
+                        <input type="password" id="confirmInput" class="form-input" required
+                               placeholder="Repeat your password">
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="setupBtn">Create Password</button>
                 </form>
             </div>
         </div>
@@ -107,30 +112,44 @@
             document.body.classList.add('dark-mode');
         }
 
-        // Redirect to setup if not yet configured
+        // Redirect to login if setup is already done
         (async () => {
             try {
                 const res = await fetch('/api/auth/status');
                 const data = await res.json();
-                if (data.setup_required) {
-                    window.location.href = '/setup.html';
+                if (!data.setup_required) {
+                    window.location.href = '/login.html';
                 }
-            } catch (e) { /* ignore, let login proceed */ }
+            } catch (e) { /* ignore */ }
         })();
 
-        const loginForm = document.getElementById('loginForm');
+        const setupForm = document.getElementById('setupForm');
         const passwordInput = document.getElementById('passwordInput');
-        const loginError = document.getElementById('loginError');
-        const loginBtn = document.getElementById('loginBtn');
+        const confirmInput = document.getElementById('confirmInput');
+        const setupError = document.getElementById('setupError');
+        const setupBtn = document.getElementById('setupBtn');
 
-        loginForm.addEventListener('submit', async (e) => {
+        setupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            loginError.style.display = 'none';
-            loginBtn.disabled = true;
-            loginBtn.textContent = 'Logging in...';
+            setupError.style.display = 'none';
+
+            if (passwordInput.value !== confirmInput.value) {
+                setupError.textContent = 'Passwords do not match';
+                setupError.style.display = 'block';
+                return;
+            }
+
+            if (passwordInput.value.length < 8) {
+                setupError.textContent = 'Password must be at least 8 characters';
+                setupError.style.display = 'block';
+                return;
+            }
+
+            setupBtn.disabled = true;
+            setupBtn.textContent = 'Creating...';
 
             try {
-                const response = await fetch('/api/auth/login', {
+                const response = await fetch('/api/auth/setup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: passwordInput.value }),
@@ -138,18 +157,17 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    window.location.href = '/';
+                    window.location.href = '/login.html';
                 } else {
-                    loginError.textContent = data.error || 'Invalid password';
-                    loginError.style.display = 'block';
-                    passwordInput.select();
+                    setupError.textContent = data.error || 'Setup failed';
+                    setupError.style.display = 'block';
                 }
             } catch (err) {
-                loginError.textContent = 'Connection error. Please try again.';
-                loginError.style.display = 'block';
+                setupError.textContent = 'Connection error. Please try again.';
+                setupError.style.display = 'block';
             } finally {
-                loginBtn.disabled = false;
-                loginBtn.textContent = 'Login';
+                setupBtn.disabled = false;
+                setupBtn.textContent = 'Create Password';
             }
         });
     </script>

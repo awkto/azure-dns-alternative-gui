@@ -1,11 +1,15 @@
 // Use relative URL so it works regardless of hostname/IP
 const API_BASE_URL = '/api';
 
-// Auth check — redirect to login if not authenticated
+// Auth check — redirect to setup or login if not authenticated
 async function checkAuth() {
     try {
         const response = await fetch(`${API_BASE_URL}/auth/status`);
         const data = await response.json();
+        if (data.setup_required) {
+            window.location.href = '/setup.html';
+            return false;
+        }
         if (!data.authenticated) {
             window.location.href = '/login.html';
             return false;
@@ -59,10 +63,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isAuthenticated) return;
 
     loadCurrentConfig();
-    
+    loadApiToken();
+
     settingsForm.addEventListener('submit', handleSaveConfig);
     testConnectionBtn.addEventListener('click', handleTestConnection);
     toggleSecretBtn.addEventListener('click', toggleSecretVisibility);
+
+    const toggleTokenBtn = document.getElementById('toggleTokenBtn');
+    if (toggleTokenBtn) {
+        toggleTokenBtn.addEventListener('click', toggleApiTokenVisibility);
+    }
+
+    const copyTokenBtn = document.getElementById('copyTokenBtn');
+    if (copyTokenBtn) {
+        copyTokenBtn.addEventListener('click', copyApiToken);
+    }
+
+    const regenerateTokenBtn = document.getElementById('regenerateTokenBtn');
+    if (regenerateTokenBtn) {
+        regenerateTokenBtn.addEventListener('click', regenerateApiToken);
+    }
 });
 
 // Toggle secret visibility
@@ -261,4 +281,61 @@ function showError(message) {
 function hideMessages() {
     successMessage.style.display = 'none';
     errorMessage.style.display = 'none';
+}
+
+// API Token management
+async function loadApiToken() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/token`);
+        if (!response.ok) return;
+        const data = await response.json();
+        const tokenInput = document.getElementById('apiTokenInput');
+        if (tokenInput) tokenInput.value = data.api_token;
+    } catch (error) {
+        console.error('Failed to load API token:', error);
+    }
+}
+
+function toggleApiTokenVisibility() {
+    const tokenInput = document.getElementById('apiTokenInput');
+    const eyeEl = document.getElementById('tokenEyeIcon');
+    const eyeOffEl = document.getElementById('tokenEyeOffIcon');
+    if (!tokenInput) return;
+    if (tokenInput.type === 'password') {
+        tokenInput.type = 'text';
+        if (eyeEl) eyeEl.style.display = 'none';
+        if (eyeOffEl) eyeOffEl.style.display = 'block';
+    } else {
+        tokenInput.type = 'password';
+        if (eyeEl) eyeEl.style.display = 'block';
+        if (eyeOffEl) eyeOffEl.style.display = 'none';
+    }
+}
+
+async function copyApiToken() {
+    const tokenInput = document.getElementById('apiTokenInput');
+    if (!tokenInput || !tokenInput.value) return;
+    try {
+        await navigator.clipboard.writeText(tokenInput.value);
+        showSuccess('API token copied to clipboard');
+    } catch (e) {
+        showError('Failed to copy token');
+    }
+}
+
+async function regenerateApiToken() {
+    if (!confirm('Regenerate the API token? Any scripts using the old token will need to be updated.')) return;
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/token/regenerate`, { method: 'POST' });
+        const data = await response.json();
+        if (response.ok) {
+            const tokenInput = document.getElementById('apiTokenInput');
+            if (tokenInput) tokenInput.value = data.api_token;
+            showSuccess('API token regenerated successfully');
+        } else {
+            showError(data.error || 'Failed to regenerate token');
+        }
+    } catch (error) {
+        showError(`Regenerate failed: ${error.message}`);
+    }
 }
