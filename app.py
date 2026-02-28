@@ -13,8 +13,27 @@ import hashlib
 from functools import wraps
 from datetime import timedelta
 
-# Load environment variables
-load_dotenv()
+# Config directory — mount a host directory here for persistence
+DATA_DIR = '/app/data'
+ENV_FILE = os.path.join(DATA_DIR, 'azure.env')
+
+def init_config_dir():
+    """Ensure the data directory and config file exist with empty defaults."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    if not os.path.exists(ENV_FILE):
+        with open(ENV_FILE, 'w') as f:
+            f.write(
+                "AZURE_TENANT_ID=\n"
+                "AZURE_CLIENT_ID=\n"
+                "AZURE_CLIENT_SECRET=\n"
+                "AZURE_SUBSCRIPTION_ID=\n"
+                "AZURE_RESOURCE_GROUP=\n"
+                "AZURE_DNS_ZONE=\n"
+            )
+        print(f"Created empty config file at {ENV_FILE}")
+
+init_config_dir()
+load_dotenv(ENV_FILE)
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
@@ -139,18 +158,14 @@ def update_config(new_config):
     RESOURCE_GROUP = config['RESOURCE_GROUP']
     DNS_ZONE = config['DNS_ZONE']
     
-    # Save to .env file
-    env_file = '.env'
-    if not os.path.exists(env_file):
-        with open(env_file, 'w') as f:
-            f.write('')
+    # Save to config file (already guaranteed to exist via init_config_dir)
     
-    set_key(env_file, 'AZURE_TENANT_ID', config['TENANT_ID'])
-    set_key(env_file, 'AZURE_CLIENT_ID', config['CLIENT_ID'])
-    set_key(env_file, 'AZURE_CLIENT_SECRET', config['CLIENT_SECRET'])
-    set_key(env_file, 'AZURE_SUBSCRIPTION_ID', config['SUBSCRIPTION_ID'])
-    set_key(env_file, 'AZURE_RESOURCE_GROUP', config['RESOURCE_GROUP'])
-    set_key(env_file, 'AZURE_DNS_ZONE', config['DNS_ZONE'])
+    set_key(ENV_FILE, 'AZURE_TENANT_ID', config['TENANT_ID'])
+    set_key(ENV_FILE, 'AZURE_CLIENT_ID', config['CLIENT_ID'])
+    set_key(ENV_FILE, 'AZURE_CLIENT_SECRET', config['CLIENT_SECRET'])
+    set_key(ENV_FILE, 'AZURE_SUBSCRIPTION_ID', config['SUBSCRIPTION_ID'])
+    set_key(ENV_FILE, 'AZURE_RESOURCE_GROUP', config['RESOURCE_GROUP'])
+    set_key(ENV_FILE, 'AZURE_DNS_ZONE', config['DNS_ZONE'])
 
 # Initialize Azure DNS client
 def get_dns_client():

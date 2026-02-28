@@ -18,8 +18,8 @@ ARG APP_VERSION=""
 RUN VERSION="${APP_VERSION:-$(cat VERSION | tr -d '[:space:]')}"; \
     sed -i "s/__VERSION__/${VERSION}/g" static/index.html
 
-# Create .env file placeholder (will be populated at runtime)
-RUN touch .env
+# Data directory — mount a host directory here for persistent config
+RUN mkdir -p /app/data
 
 # Expose port
 EXPOSE 5000
