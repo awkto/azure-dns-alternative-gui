@@ -1,11 +1,15 @@
 // Use relative URL so it works regardless of hostname/IP
 const API_BASE_URL = '/api';
 
-// Auth check — redirect to login if not authenticated
+// Auth check — redirect to setup or login if not authenticated
 async function checkAuth() {
     try {
         const response = await fetch(`${API_BASE_URL}/auth/status`);
         const data = await response.json();
+        if (data.setup_required) {
+            window.location.href = '/setup.html';
+            return false;
+        }
         if (!data.authenticated) {
             window.location.href = '/login.html';
             return false;
