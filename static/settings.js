@@ -56,6 +56,102 @@ const eyeOffIcon = document.getElementById('eyeOffIcon');
 // Track if this is a first-time setup
 let isSetupMode = false;
 
+// Raw mode state
+let rawMode = false;
+
+const ENV_KEY_MAP = {
+    'AZURE_TENANT_ID':       'tenant_id',
+    'AZURE_CLIENT_ID':       'client_id',
+    'AZURE_CLIENT_SECRET':   'client_secret',
+    'AZURE_SUBSCRIPTION_ID': 'subscription_id',
+    'AZURE_RESOURCE_GROUP':  'resource_group',
+    'AZURE_DNS_ZONE':        'dns_zone',
+};
+
+function serializeToRaw() {
+    return [
+        `AZURE_TENANT_ID='${tenantIdInput.value}'`,
+        `AZURE_CLIENT_ID='${clientIdInput.value}'`,
+        `AZURE_CLIENT_SECRET='${clientSecretInput.value}'`,
+        `AZURE_SUBSCRIPTION_ID='${subscriptionIdInput.value}'`,
+        `AZURE_RESOURCE_GROUP='${resourceGroupInput.value}'`,
+        `AZURE_DNS_ZONE='${dnsZoneInput.value}'`,
+    ].join('\n');
+}
+
+function parseRaw(text) {
+    text = (text || '').trim();
+    if (!text) return {};
+
+    // Try JSON first
+    if (text.startsWith('{')) {
+        try {
+            const obj = JSON.parse(text);
+            const result = {};
+            for (const [envKey, fieldKey] of Object.entries(ENV_KEY_MAP)) {
+                if (obj[fieldKey]  !== undefined) result[fieldKey] = obj[fieldKey];
+                else if (obj[envKey] !== undefined) result[fieldKey] = obj[envKey];
+            }
+            return result;
+        } catch (e) { /* fall through */ }
+    }
+
+    // .env format: KEY=value  or  KEY='value'  or  KEY="value"
+    const result = {};
+    for (const line of text.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        let val = trimmed.slice(eqIdx + 1).trim();
+        if ((val.startsWith("'") && val.endsWith("'")) ||
+            (val.startsWith('"') && val.endsWith('"'))) {
+            val = val.slice(1, -1);
+        }
+        const fieldKey = ENV_KEY_MAP[key];
+        if (fieldKey) result[fieldKey] = val;
+    }
+    return result;
+}
+
+function toggleRawMode() {
+    const azureFormFields = document.getElementById('azureFormFields');
+    const rawInput = document.getElementById('rawConfigInput');
+    const toggleBtn = document.getElementById('toggleRawModeBtn');
+
+    if (!rawMode) {
+        // Form → Raw: serialize current values into textarea
+        rawInput.value = serializeToRaw();
+        azureFormFields.style.display = 'none';
+        rawInput.style.display = 'block';
+        rawInput.focus();
+        toggleBtn.innerHTML = `
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+            Form`;
+        rawMode = true;
+    } else {
+        // Raw → Form: parse textarea back into fields
+        const parsed = parseRaw(rawInput.value);
+        if (parsed.tenant_id       !== undefined) tenantIdInput.value       = parsed.tenant_id;
+        if (parsed.client_id       !== undefined) clientIdInput.value       = parsed.client_id;
+        if (parsed.client_secret   !== undefined) clientSecretInput.value   = parsed.client_secret;
+        if (parsed.subscription_id !== undefined) subscriptionIdInput.value = parsed.subscription_id;
+        if (parsed.resource_group  !== undefined) resourceGroupInput.value  = parsed.resource_group;
+        if (parsed.dns_zone        !== undefined) dnsZoneInput.value        = parsed.dns_zone;
+        rawInput.style.display = 'none';
+        azureFormFields.style.display = 'block';
+        toggleBtn.innerHTML = `
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+            </svg>
+            Raw`;
+        rawMode = false;
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     // Check authentication first
@@ -68,6 +164,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     settingsForm.addEventListener('submit', handleSaveConfig);
     testConnectionBtn.addEventListener('click', handleTestConnection);
     toggleSecretBtn.addEventListener('click', toggleSecretVisibility);
+
+    const toggleRawModeBtn = document.getElementById('toggleRawModeBtn');
+    if (toggleRawModeBtn) {
+        toggleRawModeBtn.addEventListener('click', toggleRawMode);
+    }
 
     const toggleTokenBtn = document.getElementById('toggleTokenBtn');
     if (toggleTokenBtn) {
@@ -242,13 +343,25 @@ async function handleSaveConfig(e) {
 
 // Helper functions
 function getFormData() {
+    if (rawMode) {
+        const rawInput = document.getElementById('rawConfigInput');
+        const parsed = parseRaw(rawInput ? rawInput.value : '');
+        return {
+            tenant_id:       (parsed.tenant_id       || '').trim(),
+            client_id:       (parsed.client_id       || '').trim(),
+            client_secret:   (parsed.client_secret   || '').trim(),
+            subscription_id: (parsed.subscription_id || '').trim(),
+            resource_group:  (parsed.resource_group  || '').trim(),
+            dns_zone:        (parsed.dns_zone         || '').trim(),
+        };
+    }
     return {
-        tenant_id: tenantIdInput.value.trim(),
-        client_id: clientIdInput.value.trim(),
-        client_secret: clientSecretInput.value.trim(),
+        tenant_id:       tenantIdInput.value.trim(),
+        client_id:       clientIdInput.value.trim(),
+        client_secret:   clientSecretInput.value.trim(),
         subscription_id: subscriptionIdInput.value.trim(),
-        resource_group: resourceGroupInput.value.trim(),
-        dns_zone: dnsZoneInput.value.trim()
+        resource_group:  resourceGroupInput.value.trim(),
+        dns_zone:        dnsZoneInput.value.trim(),
     };
 }
 
