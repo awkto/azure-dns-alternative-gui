@@ -5,17 +5,18 @@ from azure.identity import ClientSecretCredential
 from azure.mgmt.dns import DnsManagementClient
 from azure.mgmt.dns.models import RecordSet, ARecord, AaaaRecord, CnameRecord, MxRecord, TxtRecord
 from dotenv import load_dotenv, set_key
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import json
 import secrets
 import hmac
-import hashlib
 from functools import wraps
 from datetime import timedelta
 
 # Config directory — mount a host directory here for persistence
 DATA_DIR = '/app/data'
 ENV_FILE = os.path.join(DATA_DIR, 'azure.env')
+AUTH_FILE = os.path.join(DATA_DIR, 'auth.env')
 
 def init_config_dir():
     """Ensure the data directory and config file exist with empty defaults."""
@@ -32,26 +33,34 @@ def init_config_dir():
             )
         print(f"Created empty config file at {ENV_FILE}")
 
+def init_auth_config():
+    """Ensure auth config exists with SECRET_KEY and API_TOKEN generated, password hash empty."""
+    if not os.path.exists(AUTH_FILE):
+        secret_key = secrets.token_hex(32)
+        api_token  = secrets.token_hex(32)
+        with open(AUTH_FILE, 'w') as f:
+            f.write(f"SECRET_KEY={secret_key}\n"
+                    f"ADMIN_PASSWORD_HASH=\n"
+                    f"API_TOKEN={api_token}\n")
+        print(f"Created auth config at {AUTH_FILE}")
+    load_dotenv(AUTH_FILE)
+
 init_config_dir()
 load_dotenv(ENV_FILE)
+init_auth_config()
+
+SECRET_KEY          = os.getenv('SECRET_KEY')
+ADMIN_PASSWORD_HASH = os.getenv('ADMIN_PASSWORD_HASH', '')
+API_TOKEN           = os.getenv('API_TOKEN')
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
-
-# --- Authentication Setup ---
-ADMIN_TOKEN = os.getenv('ADMIN_TOKEN')
-if not ADMIN_TOKEN:
-    ADMIN_TOKEN = secrets.token_hex(16)
-    env_file = '.env'
-    if not os.path.exists(env_file):
-        with open(env_file, 'w') as f:
-            f.write('')
-    set_key(env_file, 'ADMIN_TOKEN', ADMIN_TOKEN)
-    print(f"Generated new ADMIN_TOKEN: {ADMIN_TOKEN}")
-    print("This token has been saved to .env and is required to log in.")
-
-app.secret_key = hashlib.sha256(f"{ADMIN_TOKEN}:flask-session-salt".encode()).hexdigest()
+app.secret_key = SECRET_KEY
 app.permanent_session_lifetime = timedelta(days=30)
+
+
+def is_setup_required():
+    return not bool(ADMIN_PASSWORD_HASH)
 
 
 def login_required(f):
@@ -60,11 +69,11 @@ def login_required(f):
         # Check Flask session
         if session.get('authenticated'):
             return f(*args, **kwargs)
-        # Check Bearer token
+        # Check Bearer token (API_TOKEN only — password is not a valid bearer token)
         auth_header = request.headers.get('Authorization', '')
-        if auth_header.startswith('Bearer '):
+        if auth_header.startswith('Bearer ') and API_TOKEN:
             token = auth_header[7:]
-            if hmac.compare_digest(token, ADMIN_TOKEN):
+            if hmac.compare_digest(token, API_TOKEN):
                 return f(*args, **kwargs)
         return jsonify({'error': 'Authentication required'}), 401
     return decorated_function
@@ -190,13 +199,13 @@ def serve_static(path):
     """Serve static files"""
     return send_from_directory('static', path)
 
-@app.route('/api/auth/login', methods=['POST'])
-def auth_login():
-    """Login with admin token
+@app.route('/api/auth/setup', methods=['POST'])
+def auth_setup():
+    """Create the admin password (first-boot only)
     ---
     tags:
       - Authentication
-    summary: Login with admin token
+    summary: Create admin password
     parameters:
       - in: body
         name: body
@@ -204,23 +213,60 @@ def auth_login():
         schema:
           type: object
           required:
-            - token
+            - password
           properties:
-            token:
+            password:
+              type: string
+    responses:
+      200:
+        description: Password created
+      409:
+        description: Password already set
+    """
+    global ADMIN_PASSWORD_HASH
+    if ADMIN_PASSWORD_HASH:
+        return jsonify({'error': 'Password already set'}), 409
+    data = request.json or {}
+    password = data.get('password', '')
+    if not password:
+        return jsonify({'error': 'Password is required'}), 400
+    hashed = generate_password_hash(password)
+    set_key(AUTH_FILE, 'ADMIN_PASSWORD_HASH', hashed)
+    ADMIN_PASSWORD_HASH = hashed
+    return jsonify({'success': True, 'message': 'Password created'})
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    """Login with admin password
+    ---
+    tags:
+      - Authentication
+    summary: Login with admin password
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - password
+          properties:
+            password:
               type: string
     responses:
       200:
         description: Login successful
       401:
-        description: Invalid token
+        description: Invalid password
     """
     data = request.json or {}
-    token = data.get('token', '')
-    if hmac.compare_digest(token, ADMIN_TOKEN):
+    password = data.get('password', '')
+    if ADMIN_PASSWORD_HASH and check_password_hash(ADMIN_PASSWORD_HASH, password):
         session.permanent = True
         session['authenticated'] = True
         return jsonify({'success': True, 'message': 'Login successful'})
-    return jsonify({'error': 'Invalid token'}), 401
+    return jsonify({'error': 'Invalid password'}), 401
 
 
 @app.route('/api/auth/logout', methods=['POST'])
@@ -250,12 +296,46 @@ def auth_status():
         description: Authentication status
     """
     authenticated = bool(session.get('authenticated'))
-    if not authenticated:
+    if not authenticated and API_TOKEN:
         auth_header = request.headers.get('Authorization', '')
         if auth_header.startswith('Bearer '):
             token = auth_header[7:]
-            authenticated = hmac.compare_digest(token, ADMIN_TOKEN)
-    return jsonify({'authenticated': authenticated})
+            authenticated = hmac.compare_digest(token, API_TOKEN)
+    return jsonify({'authenticated': authenticated, 'setup_required': is_setup_required()})
+
+
+@app.route('/api/auth/token', methods=['GET'])
+@login_required
+def get_api_token():
+    """Get the API token
+    ---
+    tags:
+      - Authentication
+    summary: Get current API token
+    responses:
+      200:
+        description: API token
+    """
+    return jsonify({'api_token': API_TOKEN})
+
+
+@app.route('/api/auth/token/regenerate', methods=['POST'])
+@login_required
+def regenerate_api_token():
+    """Regenerate the API token
+    ---
+    tags:
+      - Authentication
+    summary: Regenerate API token
+    responses:
+      200:
+        description: New API token
+    """
+    global API_TOKEN
+    new_token = secrets.token_hex(32)
+    set_key(AUTH_FILE, 'API_TOKEN', new_token)
+    API_TOKEN = new_token
+    return jsonify({'success': True, 'api_token': new_token})
 
 
 @app.route('/api/health', methods=['GET'])
@@ -1043,6 +1123,6 @@ if __name__ == '__main__':
         print("The application will start, but you need to configure Azure credentials in Settings.")
         print(f"Starting Azure DNS Manager (unconfigured)")
     else:
-        print(f"Starting Azure DNS Manager for zone: {DNS_ZONE}")
+        print(f"Starting Azure DNS Manager for zone: {config.get('DNS_ZONE')}")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
