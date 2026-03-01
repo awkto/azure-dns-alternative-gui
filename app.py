@@ -1013,11 +1013,28 @@ def update_record(record_type, record_name):
         data = request.json
         ttl = data.get('ttl', 3600)
         values = data.get('values', [])
+        new_name = data.get('new_name')
 
         if not values:
             return jsonify({'error': 'Missing required field: values'}), 400
 
         client = get_dns_client()
+
+        # Determine the target name (new_name if renaming, otherwise original)
+        target_name = new_name if new_name and new_name != record_name else record_name
+
+        # If renaming, check that the target doesn't already exist
+        if target_name != record_name:
+            try:
+                client.record_sets.get(
+                    config['RESOURCE_GROUP'],
+                    config['DNS_ZONE'],
+                    target_name,
+                    record_type
+                )
+                return jsonify({'error': f'A {record_type} record named "{target_name}" already exists'}), 409
+            except Exception:
+                pass  # Record doesn't exist, safe to proceed
 
         # Create the appropriate record set based on type
         record_set = RecordSet(ttl=ttl)
@@ -1042,16 +1059,25 @@ def update_record(record_type, record_name):
         else:
             return jsonify({'error': f'Unsupported record type: {record_type}'}), 400
 
-        # Update the record
+        # Create/update the record at the target name
         result = client.record_sets.create_or_update(
             config['RESOURCE_GROUP'],
             config['DNS_ZONE'],
-            record_name,
+            target_name,
             record_type,
             record_set
         )
 
-        return jsonify({'message': 'Record updated successfully', 'name': record_name})
+        # If renaming, delete the old record
+        if target_name != record_name:
+            client.record_sets.delete(
+                config['RESOURCE_GROUP'],
+                config['DNS_ZONE'],
+                record_name,
+                record_type
+            )
+
+        return jsonify({'message': 'Record updated successfully', 'name': target_name})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

@@ -368,9 +368,9 @@ async function handleAddRecord(e) {
 
 // Edit record - show modal
 function editRecord(name, type, ttl, values) {
-    document.getElementById('editRecordName').value = name;
+    document.getElementById('editRecordOriginalName').value = name;
     document.getElementById('editRecordType').value = type;
-    document.getElementById('editRecordNameDisplay').value = name;
+    document.getElementById('editRecordName').value = name;
     document.getElementById('editRecordTypeDisplay').value = type;
     document.getElementById('editRecordTTL').value = ttl;
     document.getElementById('editRecordValues').value = values.join('\n');
@@ -382,25 +382,35 @@ function editRecord(name, type, ttl, values) {
 async function handleEditRecord(e) {
     e.preventDefault();
     
-    const name = document.getElementById('editRecordName').value;
+    const originalName = document.getElementById('editRecordOriginalName').value;
+    const newName = document.getElementById('editRecordName').value.trim();
     const type = document.getElementById('editRecordType').value;
     const ttl = parseInt(document.getElementById('editRecordTTL').value);
     const valuesText = document.getElementById('editRecordValues').value.trim();
-    
+
     const values = valuesText.split('\n').map(v => v.trim()).filter(v => v.length > 0);
-    
+
     if (values.length === 0) {
         showError('Please enter at least one value');
         return;
     }
-    
+
+    if (!newName) {
+        showError('Please enter a record name');
+        return;
+    }
+
     try {
-        const response = await fetch(`${API_BASE_URL}/records/${type}/${name}`, {
+        const body = { ttl, values };
+        if (newName !== originalName) {
+            body.new_name = newName;
+        }
+        const response = await fetch(`${API_BASE_URL}/records/${type}/${originalName}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ ttl, values }),
+            body: JSON.stringify(body),
         });
         
         const data = await response.json();
