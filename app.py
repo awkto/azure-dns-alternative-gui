@@ -304,6 +304,50 @@ def auth_status():
     return jsonify({'authenticated': authenticated, 'setup_required': is_setup_required()})
 
 
+@app.route('/api/auth/change-password', methods=['POST'])
+@login_required
+def change_password():
+    """Change the admin password
+    ---
+    tags:
+      - Authentication
+    summary: Change admin password
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          required:
+            - current_password
+            - new_password
+          properties:
+            current_password:
+              type: string
+            new_password:
+              type: string
+    responses:
+      200:
+        description: Password changed
+      400:
+        description: Missing fields
+      401:
+        description: Current password incorrect
+    """
+    global ADMIN_PASSWORD_HASH
+    data = request.json or {}
+    current_password = data.get('current_password', '')
+    new_password = data.get('new_password', '')
+    if not current_password or not new_password:
+        return jsonify({'error': 'Current password and new password are required'}), 400
+    if not check_password_hash(ADMIN_PASSWORD_HASH, current_password):
+        return jsonify({'error': 'Current password is incorrect'}), 401
+    hashed = generate_password_hash(new_password)
+    set_key(AUTH_FILE, 'ADMIN_PASSWORD_HASH', hashed)
+    ADMIN_PASSWORD_HASH = hashed
+    return jsonify({'success': True, 'message': 'Password changed successfully'})
+
+
 @app.route('/api/auth/token', methods=['GET'])
 @login_required
 def get_api_token():
