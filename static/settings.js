@@ -184,6 +184,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (regenerateTokenBtn) {
         regenerateTokenBtn.addEventListener('click', regenerateApiToken);
     }
+
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
+    if (changePasswordBtn) {
+        changePasswordBtn.addEventListener('click', handleChangePassword);
+    }
 });
 
 // Toggle secret visibility
@@ -394,6 +399,42 @@ function showError(message) {
 function hideMessages() {
     successMessage.style.display = 'none';
     errorMessage.style.display = 'none';
+}
+
+// Change password
+async function handleChangePassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showError('Please fill in all password fields');
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        showError('New passwords do not match');
+        return;
+    }
+
+    try {
+        hideMessages();
+        const response = await fetch(`${API_BASE_URL}/auth/change-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+            showSuccess('Password changed successfully');
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        } else {
+            showError(data.error || 'Failed to change password');
+        }
+    } catch (error) {
+        showError(`Failed to change password: ${error.message}`);
+    }
 }
 
 // API Token management

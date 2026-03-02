@@ -220,6 +220,32 @@ AZURE_DNS_ZONE='...'"></textarea>
                         </div>
                     </form>
 
+                    <!-- Change Password Section -->
+                    <div class="form-section" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+                        <h2>🔒 Change Password</h2>
+                        <div class="form-group">
+                            <label for="currentPassword">Current Password *</label>
+                            <input type="password" id="currentPassword" class="form-input" required
+                                   placeholder="Enter current password">
+                        </div>
+                        <div class="form-group">
+                            <label for="newPassword">New Password *</label>
+                            <input type="password" id="newPassword" class="form-input" required
+                                   placeholder="Enter new password">
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirm New Password *</label>
+                            <input type="password" id="confirmPassword" class="form-input" required
+                                   placeholder="Confirm new password">
+                        </div>
+                        <button type="button" id="changePasswordBtn" class="btn btn-primary">
+                            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                            </svg>
+                            Change Password
+                        </button>
+                    </div>
+
                     <!-- API Token Section -->
                     <div class="form-section" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
                         <h2>🔑 API Token</h2>
