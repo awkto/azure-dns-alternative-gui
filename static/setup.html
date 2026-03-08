@@ -4,85 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Setup - Azure DNS Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
-        .login-wrapper {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 1rem;
-        }
-        .login-card {
-            width: 100%;
-            max-width: 420px;
-            border-radius: 1rem;
-            border: 1px solid var(--border-color);
-            background: var(--bg-card-solid);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-        }
-        .login-header {
-            padding: 2rem 2rem 1rem;
-            text-align: center;
-        }
-        .login-header .icon-badge {
-            margin: 0 auto 1rem;
-        }
-        .login-header h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
-        .login-header p {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-        .login-body {
-            padding: 1rem 2rem 2rem;
-        }
-        .login-error {
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
-            font-size: 0.875rem;
-            display: none;
-        }
-        body.dark-mode .login-error {
-            background: rgba(220, 38, 38, 0.15);
-            border-color: rgba(220, 38, 38, 0.3);
-            color: #fca5a5;
-        }
-        .login-body .form-group {
-            margin-bottom: 1.5rem;
-        }
-        .login-body .form-group label {
-            display: block;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
-        .login-body .btn-primary {
-            width: 100%;
-            padding: 0.75rem;
-            font-size: 1rem;
-        }
+        .login-wrapper { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+        .login-card { width: 100%; max-width: 400px; background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; }
+        .login-header { padding: 2rem 2rem 1rem; text-align: center; }
+        .login-header h1 { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.375rem; }
+        .login-header p { font-size: 0.8125rem; color: var(--text-tertiary); }
+        .login-icon { width: 40px; height: 40px; color: var(--accent); margin: 0 auto 1rem; }
+        .setup-badge { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.625rem;
+            border-radius: 4px; font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 500;
+            background: var(--accent-subtle); color: var(--accent-text); border: 1px solid var(--border-focus);
+            margin-bottom: 1rem; }
+        .login-body { padding: 1rem 2rem 2rem; }
+        .login-error { padding: 0.75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem;
+            background: var(--danger-subtle); border: 1px solid var(--danger); color: var(--danger-text);
+            font-size: 0.875rem; display: none; }
+        .login-body .form-group { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.375rem; }
+        .login-body .form-group label { font-size: 0.8125rem; font-weight: 500; color: var(--text-primary); }
+        .login-submit { width: 100%; padding: 0.625rem; font-size: 0.875rem; font-weight: 500;
+            font-family: var(--font-sans); background: var(--accent); color: white;
+            border: 1px solid var(--accent); border-radius: var(--radius-sm); cursor: pointer;
+            transition: background 0.15s; }
+        .login-submit:hover { background: var(--accent-hover); }
     </style>
 </head>
 <body>
     <div class="login-wrapper">
         <div class="login-card">
             <div class="login-header">
-                <div class="icon-badge">
-                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                    </svg>
-                </div>
+                <svg class="login-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+                <span class="setup-badge">First-time setup</span>
                 <h1>Azure DNS Manager</h1>
                 <p>Create your admin password to get started</p>
             </div>
@@ -92,35 +50,28 @@
                     <div class="form-group">
                         <label for="passwordInput">Password</label>
                         <input type="password" id="passwordInput" class="form-input" required
-                               placeholder="Choose a password" autofocus>
+                               placeholder="Choose a password (min. 8 characters)" autofocus>
                     </div>
                     <div class="form-group">
                         <label for="confirmInput">Confirm Password</label>
                         <input type="password" id="confirmInput" class="form-input" required
                                placeholder="Repeat your password">
                     </div>
-                    <button type="submit" class="btn btn-primary" id="setupBtn">Create Password</button>
+                    <button type="submit" class="login-submit" id="setupBtn">Create Password</button>
                 </form>
             </div>
         </div>
     </div>
 
     <script>
-        // Dark mode support
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-        }
+        if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
 
-        // Redirect to login if setup is already done
         (async () => {
             try {
                 const res = await fetch('/api/auth/status');
                 const data = await res.json();
-                if (!data.setup_required) {
-                    window.location.href = '/login.html';
-                }
-            } catch (e) { /* ignore */ }
+                if (!data.setup_required) window.location.href = '/login.html';
+            } catch {}
         })();
 
         const setupForm = document.getElementById('setupForm');
@@ -162,7 +113,7 @@
                     setupError.textContent = data.error || 'Setup failed';
                     setupError.style.display = 'block';
                 }
-            } catch (err) {
+            } catch {
                 setupError.textContent = 'Connection error. Please try again.';
                 setupError.style.display = 'block';
             } finally {
