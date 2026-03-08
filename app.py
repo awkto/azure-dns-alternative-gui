@@ -35,6 +35,7 @@ def init_config_dir():
 
 def init_auth_config():
     """Ensure auth config exists with SECRET_KEY and API_TOKEN generated, password hash empty."""
+    os.makedirs(DATA_DIR, exist_ok=True)
     if not os.path.exists(AUTH_FILE):
         secret_key = secrets.token_hex(32)
         api_token  = secrets.token_hex(32)
@@ -44,6 +45,17 @@ def init_auth_config():
                     f"API_TOKEN={api_token}\n")
         print(f"Created auth config at {AUTH_FILE}")
     load_dotenv(AUTH_FILE)
+    # Patch any keys missing from a pre-existing or externally written file
+    if not os.getenv('SECRET_KEY'):
+        secret_key = secrets.token_hex(32)
+        set_key(AUTH_FILE, 'SECRET_KEY', secret_key)
+        os.environ['SECRET_KEY'] = secret_key
+        print("Generated missing SECRET_KEY in auth config")
+    if not os.getenv('API_TOKEN'):
+        api_token = secrets.token_hex(32)
+        set_key(AUTH_FILE, 'API_TOKEN', api_token)
+        os.environ['API_TOKEN'] = api_token
+        print("Generated missing API_TOKEN in auth config")
 
 init_config_dir()
 load_dotenv(ENV_FILE)
