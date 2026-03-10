@@ -970,13 +970,15 @@ def create_record():
         elif record_type == 'CNAME':
             if len(values) > 1:
                 return jsonify({'error': 'CNAME records can only have one value'}), 400
-            record_set.cname_record = CnameRecord(cname=values[0])
+            cname_val = values[0] if values[0].endswith('.') else values[0] + '.'
+            record_set.cname_record = CnameRecord(cname=cname_val)
         elif record_type == 'MX':
             mx_records = []
             for val in values:
                 parts = val.split(' ', 1)
                 if len(parts) == 2:
-                    mx_records.append(MxRecord(preference=int(parts[0]), exchange=parts[1]))
+                    exchange = parts[1] if parts[1].endswith('.') else parts[1] + '.'
+                    mx_records.append(MxRecord(preference=int(parts[0]), exchange=exchange))
             record_set.mx_records = mx_records
         elif record_type == 'TXT':
             record_set.txt_records = [TxtRecord(value=[val]) for val in values]
@@ -1102,13 +1104,15 @@ def update_record(record_type, record_name):
         elif record_type == 'CNAME':
             if len(values) > 1:
                 return jsonify({'error': 'CNAME records can only have one value'}), 400
-            record_set.cname_record = CnameRecord(cname=values[0])
+            cname_val = values[0] if values[0].endswith('.') else values[0] + '.'
+            record_set.cname_record = CnameRecord(cname=cname_val)
         elif record_type == 'MX':
             mx_records = []
             for val in values:
                 parts = val.split(' ', 1)
                 if len(parts) == 2:
-                    mx_records.append(MxRecord(preference=int(parts[0]), exchange=parts[1]))
+                    exchange = parts[1] if parts[1].endswith('.') else parts[1] + '.'
+                    mx_records.append(MxRecord(preference=int(parts[0]), exchange=exchange))
             record_set.mx_records = mx_records
         elif record_type == 'TXT':
             record_set.txt_records = [TxtRecord(value=[val]) for val in values]
