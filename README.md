@@ -357,6 +357,64 @@ The pipeline will automatically:
 - Create a GitHub release with Docker run instructions
 - Update the Docker Hub repository description
 
+## MCP (Model Context Protocol) Integration
+
+This app includes a built-in MCP server for AI agent integration (e.g., Claude Code). MCP allows AI assistants to manage DNS records programmatically.
+
+### Enabling MCP
+
+Set the `MCP_ENABLED` environment variable:
+
+```bash
+docker run -d -p 5000:5000 \
+  -e MCP_ENABLED=true \
+  -e AZURE_TENANT_ID=your-tenant-id \
+  -e AZURE_CLIENT_ID=your-client-id \
+  -e AZURE_CLIENT_SECRET=your-client-secret \
+  -e AZURE_SUBSCRIPTION_ID=your-subscription-id \
+  -e AZURE_RESOURCE_GROUP=your-resource-group \
+  -e AZURE_DNS_ZONE=your-dns-zone.com \
+  azure-dns-manager
+```
+
+### MCP Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /mcp/sse` | SSE transport (requires Bearer token) |
+| `POST /mcp/messages` | JSON-RPC messages (requires Bearer token) |
+| `GET /mcpdocs` | Interactive MCP tool documentation |
+
+### MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_records` | List all DNS records in the zone |
+| `create_record` | Create a new DNS record |
+| `update_record` | Update an existing DNS record |
+| `delete_record` | Delete a DNS record |
+| `health_check` | Check API health and zone info |
+
+### Claude Code Configuration
+
+Add to your Claude Code MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "azure-dns": {
+      "type": "url",
+      "url": "https://your-azure-dns-host/mcp/sse",
+      "headers": {
+        "Authorization": "Bearer YOUR_API_TOKEN"
+      }
+    }
+  }
+}
+```
+
+The MCP server uses the same API token as the REST API.
+
 ## Project Structure
 
 ```

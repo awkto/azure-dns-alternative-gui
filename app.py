@@ -1198,6 +1198,12 @@ def delete_record(record_type, record_name):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# MCP (Model Context Protocol) server — opt-in via environment variable
+if os.environ.get('MCP_ENABLED', '').lower() == 'true':
+    from mcp_server import register_mcp_routes
+    register_mcp_routes(app)
+    print("MCP server enabled at /mcp/sse")
+
 if __name__ == '__main__':
     # Check if environment variables are set and log a warning if not
     required_vars = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 
