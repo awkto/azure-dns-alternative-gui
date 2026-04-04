@@ -575,6 +575,10 @@ def register_mcp_routes(app):
 
     @app.route('/mcp/sse')
     def mcp_sse():
+        from app import is_mcp_enabled
+        if not is_mcp_enabled():
+            return jsonify({'error': 'MCP is not enabled. Enable it in Settings or set MCP_ENABLED=true'}), 404
+
         auth_err = _check_mcp_auth()
         if auth_err:
             return auth_err
@@ -607,6 +611,10 @@ def register_mcp_routes(app):
 
     @app.route('/mcp/messages', methods=['POST'])
     def mcp_messages():
+        from app import is_mcp_enabled
+        if not is_mcp_enabled():
+            return jsonify({'error': 'MCP is not enabled. Enable it in Settings or set MCP_ENABLED=true'}), 404
+
         auth_err = _check_mcp_auth()
         if auth_err:
             return auth_err

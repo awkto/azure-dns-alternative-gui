@@ -165,6 +165,10 @@ def is_config_complete():
         config.get('DNS_ZONE')
     ])
 
+def is_mcp_enabled():
+    """Check if MCP is enabled via env var or saved config."""
+    return os.getenv('MCP_ENABLED', '').lower() in ('true', '1', 'yes')
+
 def update_config(new_config):
     """Update the configuration in memory and .env file"""
     global config, TENANT_ID, CLIENT_ID, CLIENT_SECRET, SUBSCRIPTION_ID, RESOURCE_GROUP, DNS_ZONE
@@ -1198,11 +1202,26 @@ def delete_record(record_type, record_name):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# MCP (Model Context Protocol) server — opt-in via environment variable
-if os.environ.get('MCP_ENABLED', '').lower() == 'true':
-    from mcp_server import register_mcp_routes
-    register_mcp_routes(app)
-    print("MCP server enabled at /mcp/sse")
+# MCP (Model Context Protocol) server — always register routes, runtime-gated by is_mcp_enabled()
+from mcp_server import register_mcp_routes
+register_mcp_routes(app)
+
+@app.route('/api/config/mcp', methods=['GET'])
+@login_required
+def get_mcp_config():
+    """Get MCP enabled status"""
+    return jsonify({'enabled': is_mcp_enabled()})
+
+@app.route('/api/config/mcp', methods=['POST'])
+@login_required
+def save_mcp_config():
+    """Toggle MCP enabled status"""
+    data = request.json or {}
+    enabled = data.get('enabled', False)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    set_key(ENV_FILE, 'MCP_ENABLED', 'true' if enabled else 'false')
+    os.environ['MCP_ENABLED'] = 'true' if enabled else 'false'
+    return jsonify({'success': True, 'enabled': enabled})
 
 if __name__ == '__main__':
     # Check if environment variables are set and log a warning if not

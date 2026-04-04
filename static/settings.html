@@ -113,6 +113,11 @@
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                 Password
             </button>
+            <div class="sidebar-heading">Integrations</div>
+            <button class="sidebar-item" data-panel="mcp">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                MCP Server
+            </button>
         </aside>
 
         <main class="settings-main">
@@ -209,6 +214,39 @@
                     </div>
                     <div class="btn-row">
                         <button type="button" id="changePasswordBtn" class="action-btn action-btn-primary">Change Password</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MCP Panel -->
+            <div id="panel-mcp" class="settings-panel">
+                <h1 class="settings-title">MCP Server</h1>
+                <p class="settings-subtitle">Enable the Model Context Protocol server for AI assistant integrations.</p>
+                <div class="section">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div class="section-title">MCP Server</div>
+                            <div class="section-desc" style="margin-bottom:0;">Allow AI assistants to manage DNS records via the MCP protocol.</div>
+                        </div>
+                        <label style="position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0;">
+                            <input type="checkbox" id="mcpToggle" style="opacity:0; width:0; height:0;">
+                            <span style="position:absolute; cursor:pointer; inset:0; background:var(--border); border-radius:24px; transition:background 0.2s;"></span>
+                            <span id="mcpToggleKnob" style="position:absolute; left:2px; top:2px; width:20px; height:20px; background:#fff; border-radius:50%; transition:transform 0.2s;"></span>
+                        </label>
+                    </div>
+                    <p id="mcpStatus" style="font-size:0.8125rem; color:var(--text-tertiary); margin-top:1rem;">Loading...</p>
+                </div>
+                <div class="section" style="margin-top:1rem;">
+                    <div class="section-title">Connection Details</div>
+                    <div class="section-desc">Use these endpoints to connect an MCP client.</div>
+                    <div class="field">
+                        <label>SSE Endpoint</label>
+                        <input type="text" class="form-input token-display" readonly value="/mcp/sse">
+                    </div>
+                    <div class="field">
+                        <label>Documentation</label>
+                        <input type="text" class="form-input token-display" readonly value="/mcpdocs">
+                        <p class="field-hint">Authenticate with <code style="font-family:var(--font-mono);font-size:0.8125rem;background:var(--bg-hover);padding:0.125rem 0.375rem;border-radius:3px;">Authorization: Bearer &lt;API_TOKEN&gt;</code></p>
                     </div>
                 </div>
             </div>

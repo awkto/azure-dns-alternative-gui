@@ -113,7 +113,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     loadCurrentConfig();
     loadApiToken();
+    loadMcpConfig();
 
+    document.getElementById('mcpToggle').addEventListener('change', handleMcpToggle);
     document.getElementById('saveConfigBtn').addEventListener('click', handleSaveConfig);
     document.getElementById('testConnectionBtn').addEventListener('click', handleTestConnection);
     document.getElementById('toggleRawModeBtn').addEventListener('click', toggleRawMode);
@@ -268,6 +270,59 @@ async function handleChangePassword() {
             document.getElementById('confirmPassword').value = '';
         } else showError(data.error || 'Failed to change password');
     } catch (e) { showError(`Failed: ${e.message}`); }
+}
+
+async function loadMcpConfig() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/config/mcp`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const toggle = document.getElementById('mcpToggle');
+        const knob = document.getElementById('mcpToggleKnob');
+        const status = document.getElementById('mcpStatus');
+        toggle.checked = data.enabled;
+        updateMcpToggleUI(data.enabled, knob, status);
+    } catch {}
+}
+
+async function handleMcpToggle() {
+    const toggle = document.getElementById('mcpToggle');
+    const knob = document.getElementById('mcpToggleKnob');
+    const status = document.getElementById('mcpStatus');
+    const enabled = toggle.checked;
+    try {
+        const res = await fetch(`${API_BASE_URL}/config/mcp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            updateMcpToggleUI(data.enabled, knob, status);
+            showSuccess(data.enabled ? 'MCP server enabled' : 'MCP server disabled');
+        } else {
+            toggle.checked = !enabled;
+            showError(data.error || 'Failed to update MCP setting');
+        }
+    } catch (e) {
+        toggle.checked = !enabled;
+        showError(`Failed to update MCP setting: ${e.message}`);
+    }
+}
+
+function updateMcpToggleUI(enabled, knob, status) {
+    const slider = knob.parentElement.querySelector('span:first-of-type');
+    if (enabled) {
+        slider.style.background = 'var(--accent)';
+        knob.style.transform = 'translateX(20px)';
+        status.textContent = 'MCP server is enabled. AI assistants can connect via SSE.';
+        status.style.color = 'var(--success-text)';
+    } else {
+        slider.style.background = 'var(--border)';
+        knob.style.transform = 'translateX(0)';
+        status.textContent = 'MCP server is disabled. Requests to /mcp/sse will be rejected.';
+        status.style.color = 'var(--text-tertiary)';
+    }
 }
 
 function showSuccess(msg) {
